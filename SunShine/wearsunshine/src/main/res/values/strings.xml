@@ -4,6 +4,6 @@
     <string name="hello_square">Hello Square World!</string>
     <string name="time">20:00</string>
     <string name="date">FRI, JUL 20 2017</string>
-    <string name="high_temp">30\u00B0</string>
-    <string name="low_temp">20\u00B0</string>
+    <string name="high_temp">%1$s\u00B0</string>
+    <string name="low_temp">%1$s\u00B0</string>
 </resources>

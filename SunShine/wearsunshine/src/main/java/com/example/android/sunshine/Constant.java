@@ -1,17 +1,21 @@
 package com.example.android.sunshine;
 
 /**
- * Created by iip on 2/14/17.
+ * Created by iip on 2/16/17.
  */
 
 public final class Constant {
-    public static final String ACTION_WEARBLE = "com.example.android.sunshine.Constant.ACTION_WEARBLE";
     public static final String PATH_COMMUNICATION = "/weather-data";
     public static final String EXTRA_WEATHERID = "weatherId";
     public static final String EXTRA_HIGH = "high";
     public static final String EXTRA_LOW = "low";
     public static final String EXTRA_IMG = "img";
 
+
     public static final String PATH_REQUEST_FROM_WEARABLE = "/weather-data-request";
     public static final String EXTRA_TIMESTAMP = "timestamp";
+
+    public static final String PREF_NAME = "com.example.android.sunshine.Constant.PREF_NAME";
+    public static final String NO_FIRST_DATA = "com.example.android.sunshine.Constant.NO_FIRST_DATA";
+
 }

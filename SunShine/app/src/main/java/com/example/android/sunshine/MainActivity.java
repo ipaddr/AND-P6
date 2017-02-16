@@ -51,18 +51,26 @@ import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.Asset;
 import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.MessageApi;
 import com.google.android.gms.wearable.PutDataMapRequest;
 import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import java.io.ByteArrayOutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 public class MainActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor>,
         ForecastAdapter.ForecastAdapterOnClickHandler,
         GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener{
+        GoogleApiClient.OnConnectionFailedListener,
+        DataApi.DataListener{
 
     private final String TAG = MainActivity.class.getSimpleName();
 
@@ -104,34 +112,9 @@ public class MainActivity extends AppCompatActivity implements
     private ProgressBar mLoadingIndicator;
 
     @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        Log.d("MainActivity", "onConnected");
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-        Log.d("MainActivity", "onConnectionSuspended");
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-        Log.d("MainActivity", "onConnectionFailed");
-    }
-
-    private GoogleApiClient mGoogleApiClient;
-
-    private void googleAPI(){
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(Wearable.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
-        mGoogleApiClient.connect();
-    }
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        googleAPI();
         setContentView(R.layout.activity_forecast);
         getSupportActionBar().setElevation(0f);
         /*
@@ -201,8 +184,6 @@ public class MainActivity extends AppCompatActivity implements
         getSupportLoaderManager().initLoader(ID_FORECAST_LOADER, null, this);
 
         SunshineSyncUtils.initialize(this);
-
-        googleAPI();
     }
 
     /**
@@ -389,7 +370,6 @@ public class MainActivity extends AppCompatActivity implements
             openPreferredLocationInMap();
             return true;
         }
-
         if (id == R.id.action_test){
             test();
             return true;
@@ -398,53 +378,23 @@ public class MainActivity extends AppCompatActivity implements
         return super.onOptionsItemSelected(item);
     }
 
-    private BroadcastReceiver receiver = new BroadcastReceiver(){
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-//            Toast.makeText(MainActivity.this, "send data from phone to wearable", Toast.LENGTH_SHORT).show();
-//
-//            PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/weather-data");
-//
-//            putDataMapReq.getDataMap().putInt("weatherId", intent.getIntExtra("weatherId", 0));
-//            putDataMapReq.getDataMap().putDouble("high", intent.getDoubleExtra("high", 0.0));
-//            putDataMapReq.getDataMap().putDouble("low", intent.getDoubleExtra("low", 0.0));
-//
-//            int imgId = SunshineWeatherUtils
-//                    .getSmallArtResourceIdForWeatherCondition(intent.getIntExtra("weatherId", 0));
-//            Asset asset = createAssetFromBitmap(BitmapFactory.decodeResource(getResources(), imgId));
-//            putDataMapReq.getDataMap().putAsset("img", asset);
-//
-//            PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
-//
-//            com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
-//                    Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
-//
-//            pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
-//                @Override
-//                public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
-//                    if (!dataItemResult.getStatus().isSuccess()){
-//                        Toast.makeText(MainActivity.this, "callback if", Toast.LENGTH_SHORT).show();
-//                    } else {
-//                        Toast.makeText(MainActivity.this, "callback else", Toast.LENGTH_SHORT).show();
-//                    }
-//                }
-//            });
-        }
-    };
-
     private void test(){
-        PutDataMapRequest putDataMapReq = PutDataMapRequest.create(Constant.PATH_COMMUNICATION);
+        PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/weather-data");
 
-        putDataMapReq.getDataMap().putInt("weatherId", 0);
-        putDataMapReq.getDataMap().putDouble("high", System.currentTimeMillis());
-        putDataMapReq.getDataMap().putDouble("low", System.currentTimeMillis());
+        putDataMapReq.getDataMap().putInt(Constant.PATH_COMMUNICATION, 500);
+        String sHigh = String.valueOf(System.currentTimeMillis());
+        double high = Double.parseDouble(sHigh.substring(sHigh.length()-2,sHigh.length()));
+        String sLow = String.valueOf(System.currentTimeMillis());
+        double low = Double.parseDouble(sHigh.substring(sLow.length()-2,sLow.length()));
+        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_HIGH, high);
+        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_IMG, low);
 
-//        Asset asset = createAssetFromBitmap(BitmapFactory.decodeResource(getResources(), R.drawable.art_clear));
-//        putDataMapReq.getDataMap().putAsset("img", asset);
+        int imgId = SunshineWeatherUtils
+                .getSmallArtResourceIdForWeatherCondition(500);
+        Asset asset = createAssetFromBitmap(BitmapFactory.decodeResource(getResources(), imgId));
+        putDataMapReq.getDataMap().putAsset(Constant.EXTRA_IMG, asset);
 
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
-        putDataMapReq.setUrgent();
 
         com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
                 Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
@@ -459,9 +409,42 @@ public class MainActivity extends AppCompatActivity implements
                 }
             }
         });
-
-        Toast.makeText(MainActivity.this, "send data from phone to wearable", Toast.LENGTH_SHORT).show();
     }
+
+    private BroadcastReceiver receiver = new BroadcastReceiver(){
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+
+            PutDataMapRequest putDataMapReq = PutDataMapRequest.create(Constant.PATH_COMMUNICATION);
+
+            putDataMapReq.getDataMap().putDouble(Constant.EXTRA_TIMESTAMP, System.currentTimeMillis());
+            putDataMapReq.getDataMap().putInt(Constant.EXTRA_WEATHERID, intent.getIntExtra(Constant.EXTRA_WEATHERID, 0));
+            putDataMapReq.getDataMap().putDouble(Constant.EXTRA_HIGH, intent.getDoubleExtra(Constant.EXTRA_HIGH, 0.0));
+            putDataMapReq.getDataMap().putDouble(Constant.EXTRA_LOW, intent.getDoubleExtra(Constant.EXTRA_LOW, 0.0));
+
+            int imgId = SunshineWeatherUtils
+                    .getSmallArtResourceIdForWeatherCondition(intent.getIntExtra(Constant.EXTRA_WEATHERID, 0));
+            Asset asset = createAssetFromBitmap(BitmapFactory.decodeResource(getResources(), imgId));
+            putDataMapReq.getDataMap().putAsset(Constant.EXTRA_IMG, asset);
+
+            PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+
+            com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
+                    Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
+
+            pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                @Override
+                public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
+                    if (!dataItemResult.getStatus().isSuccess()){
+                        Toast.makeText(MainActivity.this, "callback if", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(MainActivity.this, "callback else", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+        }
+    };
 
 
     private static Asset createAssetFromBitmap(Bitmap bitmap){
@@ -471,14 +454,58 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     @Override
+    public void onConnected(@Nullable Bundle bundle) {
+        Log.d("MainActivity", "onConnected");
+        Wearable.DataApi.addListener(mGoogleApiClient, this);
+    }
+
+    @Override
+    public void onConnectionSuspended(int i) {
+        Log.d("MainActivity", "onConnectionSuspended");
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+        Log.d("MainActivity", "onConnectionFailed");
+    }
+
+    private GoogleApiClient mGoogleApiClient;
+
+    private void googleAPI(){
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(Wearable.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
+        mGoogleApiClient.connect();
+    }
+
+    @Override
+    public void onDataChanged(DataEventBuffer dataEventBuffer) {
+        Toast.makeText(MainActivity.this, "onDataChanged", Toast.LENGTH_SHORT).show();
+        for (DataEvent event : dataEventBuffer) {
+            if (event.getType() == DataEvent.TYPE_CHANGED) {
+                // DataItem changed
+                Log.d(TAG, "ok");
+                if (mForecastAdapter.getItemCount() > 0){
+                    SunshineSyncUtils.startImmediateSync(this);
+                }
+            }
+        }
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         registerReceiver(receiver, new IntentFilter(Constant.ACTION_WEARBLE));
+        mGoogleApiClient.connect();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         unregisterReceiver(receiver);
+        Wearable.DataApi.removeListener(mGoogleApiClient, this);
+        mGoogleApiClient.disconnect();
     }
 }
