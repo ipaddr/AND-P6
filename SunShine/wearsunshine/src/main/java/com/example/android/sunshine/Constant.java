@@ -16,6 +16,5 @@ public final class Constant {
     public static final String EXTRA_TIMESTAMP = "timestamp";
 
     public static final String PREF_NAME = "com.example.android.sunshine.Constant.PREF_NAME";
-    public static final String NO_FIRST_DATA = "com.example.android.sunshine.Constant.NO_FIRST_DATA";
 
 }

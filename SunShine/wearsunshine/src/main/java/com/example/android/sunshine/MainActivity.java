@@ -109,17 +109,34 @@ public class MainActivity extends Activity implements
         Wearable.DataApi.addListener(mGoogleApiClient, this);
 
         // if no first data found then request it from phone
-        boolean isFirstDataExist = getSharedPreferences(Constant.PREF_NAME, Context.MODE_PRIVATE)
-                .getBoolean(Constant.NO_FIRST_DATA, false);
-        if (!isFirstDataExist)
-            requestDataFromPhone();
+        ExecutorService executorService = new ScheduledThreadPoolExecutor(1);
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                SharedPreferences preferences = getSharedPreferences(Constant.PREF_NAME, Context.MODE_PRIVATE);
+                int weatherId = preferences.getInt(Constant.EXTRA_WEATHERID, -1);
+                int high = preferences.getInt(Constant.EXTRA_HIGH, -1);
+                int low = preferences.getInt(Constant.EXTRA_LOW, 1);
+
+                if (weatherId == -1 || high == -1 || low == -1) {
+                    Log.d(TAG, "empty");
+                    requestDataFromPhone();
+                }
+                else {
+                    Log.d(TAG, "not emtpy");
+                    final int imgId = ImageHelper.getSmallArtResourceIdForWeatherCondition(weatherId);
+                    updateUI(imgId, high, low);
+                }
+            }
+        });
     }
 
     private void requestDataFromPhone() {
-        Toast.makeText(MainActivity.this, "requestDataFromPhone", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "requestDataFromPhone");
         PutDataMapRequest putDataMapReq = PutDataMapRequest.create(Constant.PATH_REQUEST_FROM_WEARABLE);
         putDataMapReq.getDataMap().putDouble(Constant.EXTRA_TIMESTAMP, System.currentTimeMillis());
         PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+        putDataReq.setUrgent();
 
         com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
                 Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
@@ -128,9 +145,9 @@ public class MainActivity extends Activity implements
             @Override
             public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
                 if (!dataItemResult.getStatus().isSuccess()){
-                    Toast.makeText(MainActivity.this, "callback if", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "callback if");
                 } else {
-                    Toast.makeText(MainActivity.this, "callback else", Toast.LENGTH_SHORT).show();
+                    Log.d(TAG, "callback if");
                 }
             }
         });
@@ -177,64 +194,52 @@ public class MainActivity extends Activity implements
         for (DataEvent event : dataEventBuffer) {
             if (event.getType() == DataEvent.TYPE_CHANGED) {
                 // DataItem changed
-                DataItem item = event.getDataItem();
-                if (item.getUri().getPath().compareTo(Constant.PATH_COMMUNICATION) == 0) {
+                final DataItem item = event.getDataItem();
+                if (item.getUri().getPath().compareTo(Constant.PATH_COMMUNICATION) == 0) {;
+                    Log.d(TAG, "Data from Phone in activity 2");
                     DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
-                    int weatherId = dataMap.getInt(Constant.EXTRA_WEATHERID);
-                    int high = (int)dataMap.getDouble(Constant.EXTRA_HIGH);
-                    int low = (int)dataMap.getDouble(Constant.EXTRA_LOW);
+                    Log.d(TAG, "Data from Phone in activity3");
+                    final int weatherId = dataMap.getInt(Constant.EXTRA_WEATHERID);
+                    Log.d(TAG, "Data from Phone in activity4");
+                    final int high = (int)dataMap.getDouble(Constant.EXTRA_HIGH);
+                    Log.d(TAG, "Data from Phone in activity5");
+                    final int low = (int)dataMap.getDouble(Constant.EXTRA_LOW);
+                    Log.d(TAG, "Data from Phone in activity6");
+                    final int imgId = ImageHelper.getSmallArtResourceIdForWeatherCondition(weatherId);
+                    Log.d(TAG, "Data from Phone in activity7");
+
                     Log.d(TAG, "weatherId : "+String.valueOf(weatherId));
                     Log.d(TAG, "high : "+String.valueOf(high));
                     Log.d(TAG, "low : "+String.valueOf(low));
-                    mHighTemp.setText(String.format(getString(R.string.high_temp), String.valueOf(high)));
-                    mLowTemp.setText(String.format(getString(R.string.low_temp), String.valueOf(low)));
-                    final Asset profileAsset = dataMap.getAsset(Constant.EXTRA_IMG);
-                    if (profileAsset == null) {
-                        Log.d(TAG, "profileAsset is null");
-                        return;
-                    }
-                    ExecutorService executorService = new ScheduledThreadPoolExecutor(1);
-                    executorService.submit(new Runnable() {
-                        @Override
-                        public void run() {
-                            Log.d(TAG, "profileAsset is not null");
-                            final Bitmap bitmap = loadBitmapFromAsset(profileAsset);
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    mWeatherIcon.setImageBitmap(bitmap);
-                                }
-                            });
-                        }
-                    });
-                    boolean isFirstDataExist = getSharedPreferences(Constant.PREF_NAME, Context.MODE_PRIVATE)
-                            .edit().putBoolean(Constant.NO_FIRST_DATA, true).commit();
-                    if (!isFirstDataExist)
-                        requestDataFromPhone();
+                    Log.d(TAG, "imgId : "+String.valueOf(imgId));
+
+                    SharedPreferences preferences = getSharedPreferences(Constant.PREF_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = preferences.edit();
+                    editor.putInt(Constant.EXTRA_WEATHERID, weatherId);
+                    editor.putInt(Constant.EXTRA_HIGH, high);
+                    editor.putInt(Constant.EXTRA_LOW, low);
+                    editor.commit();
+
+                    updateUI(imgId, high, low);
                 }
             }
         }
     }
 
-    public Bitmap loadBitmapFromAsset(Asset asset) {
-        if (asset == null) {
-            throw new IllegalArgumentException("Asset must be non-null");
-        }
-        ConnectionResult result =
-                mGoogleApiClient.blockingConnect(0, TimeUnit.MILLISECONDS);
-        if (!result.isSuccess()) {
-            return null;
-        }
-        // convert asset into a file descriptor and block until it's ready
-        InputStream assetInputStream = Wearable.DataApi.getFdForAsset(
-                mGoogleApiClient, asset).await().getInputStream();
-        mGoogleApiClient.disconnect();
-
-        if (assetInputStream == null) {
-            Log.w(TAG, "Requested an unknown Asset.");
-            return null;
-        }
-        // decode the stream into a bitmap
-        return BitmapFactory.decodeStream(assetInputStream);
+    /**
+     * Update main screen of wear face with new data from phone
+     * @param imgId
+     * @param high
+     * @param low
+     */
+    private void updateUI(final int imgId, final int high, final int low){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mWeatherIcon.setImageResource(imgId);
+                mHighTemp.setText(String.format(getString(R.string.high_temp), String.valueOf(high)));
+                mLowTemp.setText(String.format(getString(R.string.low_temp), String.valueOf(low)));
+            }
+        });
     }
 }

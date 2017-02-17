@@ -370,45 +370,8 @@ public class MainActivity extends AppCompatActivity implements
             openPreferredLocationInMap();
             return true;
         }
-        if (id == R.id.action_test){
-            test();
-            return true;
-        }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private void test(){
-        PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/weather-data");
-
-        putDataMapReq.getDataMap().putInt(Constant.PATH_COMMUNICATION, 500);
-        String sHigh = String.valueOf(System.currentTimeMillis());
-        double high = Double.parseDouble(sHigh.substring(sHigh.length()-2,sHigh.length()));
-        String sLow = String.valueOf(System.currentTimeMillis());
-        double low = Double.parseDouble(sHigh.substring(sLow.length()-2,sLow.length()));
-        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_HIGH, high);
-        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_IMG, low);
-
-        int imgId = SunshineWeatherUtils
-                .getSmallArtResourceIdForWeatherCondition(500);
-        Asset asset = createAssetFromBitmap(BitmapFactory.decodeResource(getResources(), imgId));
-        putDataMapReq.getDataMap().putAsset(Constant.EXTRA_IMG, asset);
-
-        PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
-
-        com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
-                Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
-
-        pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
-            @Override
-            public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
-                if (!dataItemResult.getStatus().isSuccess()){
-                    Toast.makeText(MainActivity.this, "callback if", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "callback else", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
     }
 
     private BroadcastReceiver receiver = new BroadcastReceiver(){
@@ -429,6 +392,7 @@ public class MainActivity extends AppCompatActivity implements
             putDataMapReq.getDataMap().putAsset(Constant.EXTRA_IMG, asset);
 
             PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+            putDataReq.setUrgent();
 
             com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
                     Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
@@ -437,9 +401,9 @@ public class MainActivity extends AppCompatActivity implements
                 @Override
                 public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
                     if (!dataItemResult.getStatus().isSuccess()){
-                        Toast.makeText(MainActivity.this, "callback if", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "callback if");
                     } else {
-                        Toast.makeText(MainActivity.this, "callback else", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "callback else");
                     }
                 }
             });
@@ -482,12 +446,12 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onDataChanged(DataEventBuffer dataEventBuffer) {
-        Toast.makeText(MainActivity.this, "onDataChanged", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "onDataChanged");
         for (DataEvent event : dataEventBuffer) {
             if (event.getType() == DataEvent.TYPE_CHANGED) {
                 // DataItem changed
-                Log.d(TAG, "ok");
-                if (mForecastAdapter.getItemCount() > 0){
+                DataItem item = event.getDataItem();
+                if (item.getUri().getPath().compareTo(Constant.PATH_REQUEST_FROM_WEARABLE) == 0){
                     SunshineSyncUtils.startImmediateSync(this);
                 }
             }
