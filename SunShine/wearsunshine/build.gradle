@@ -9,6 +9,7 @@ android {
         applicationId "com.example.android.sunshine"
         minSdkVersion 21
         targetSdkVersion 25
+        vectorDrawables.useSupportLibrary = true
         versionCode 1
         versionName "1.0"
     }

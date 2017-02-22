@@ -370,8 +370,43 @@ public class MainActivity extends AppCompatActivity implements
             openPreferredLocationInMap();
             return true;
         }
+        if (id == R.id.action_test){
+            test();
+            return true;
+        }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void test(){
+        PutDataMapRequest putDataMapReq = PutDataMapRequest.create(Constant.PATH_COMMUNICATION);
+
+        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_TIMESTAMP, System.currentTimeMillis());
+        putDataMapReq.getDataMap().putInt(Constant.EXTRA_WEATHERID, 0);
+        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_HIGH, 0.0);
+        putDataMapReq.getDataMap().putDouble(Constant.EXTRA_LOW, 0.0);
+
+        int imgId = SunshineWeatherUtils
+                .getSmallArtResourceIdForWeatherCondition(500);
+        Asset asset = createAssetFromBitmap(BitmapFactory.decodeResource(getResources(), imgId));
+        putDataMapReq.getDataMap().putAsset(Constant.EXTRA_IMG, asset);
+
+        PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+        putDataReq.setUrgent();
+
+        com.google.android.gms.common.api.PendingResult<DataApi.DataItemResult> pendingResult =
+                Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
+
+        pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+            @Override
+            public void onResult(@NonNull DataApi.DataItemResult dataItemResult) {
+                if (!dataItemResult.getStatus().isSuccess()){
+                    Log.d(TAG, "callback if");
+                } else {
+                    Log.d(TAG, "callback else");
+                }
+            }
+        });
     }
 
     private BroadcastReceiver receiver = new BroadcastReceiver(){
@@ -409,7 +444,6 @@ public class MainActivity extends AppCompatActivity implements
             });
         }
     };
-
 
     private static Asset createAssetFromBitmap(Bitmap bitmap){
         final ByteArrayOutputStream stream = new ByteArrayOutputStream();

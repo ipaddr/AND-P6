@@ -1,1 +1,1 @@
-include ':app', ':wearsunshine'
+include ':app', ':wearsunshine', ':watchface'

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">WatchFace</string>
+    <string name="message">Watch face tapped</string>
+    <string name="my_weather_digital_name">My Weather Digital</string>
+    <string name="high_temp">%1$s\u00B0</string>
+    <string name="low_temp">%1$s\u00B0</string>
+</resources>
