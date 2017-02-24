@@ -23,7 +23,6 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -59,7 +58,6 @@ import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import java.lang.ref.WeakReference;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -134,7 +132,8 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
         // Date
         Paint mTextPaintDate;
         int mDiffOfTextPaintDateSize = 3;
-        int mDiffOfTextPaintDatePos = 8;
+        int mDiffOfTextPaintDatePosX = 3;
+        int mDiffOfTextPaintDatePosY = 8;
 
         // Devider
         Paint mLinePaint;
@@ -151,23 +150,12 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
         int mDiffOfTextPaintHighTempSize = 2;
         int mDiffOfTextPaintHighTempPos = 14;
 
-        // high temp degree
-        Paint mTextPaintHighTempDegree;
-        int mDiffOfTextPaintHighTempDegreeSize = 6;
-        int mDiffOfTextPaintHighTempDegreePos = 2;
-
         // low temp
         private String stringLowTemp = "0";
         Paint mTextPaintLowTemp;
         int mDiffOfTextPaintLowTempSize = 2;
         int mDiffOfTextPaintLowTempPos = 14;
 
-        // high temp degree
-        Paint mTextPaintLowTempDegree;
-        int mDiffOfTextPaintLowTempDegreeSize = 6;
-        int mDiffOfTextPaintLowTempDegreePos = 2;
-
-        private final static String degree = "o";
 
         boolean mAmbient;
         Calendar mCalendar;
@@ -226,11 +214,7 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
                     }
                     else {
                         Log.d(TAG, "not emtpy");
-                        stringHighTemp = String.format(getString(R.string.high_temp), String.valueOf(high));
-                        stringLowTemp = String.format(getString(R.string.low_temp), String.valueOf(low));
-                        final int imgId = ImageHelper.getSmallArtResourceIdForWeatherCondition(weatherId);
-                        mBackgroundBitmap = getBitmapFromVectorDrawable(DigitalWatchFaceService.this, imgId);
-                        invalidate();
+                        updateData(weatherId, high, low);
                     }
                 }
             });
@@ -276,19 +260,11 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
                     // DataItem changed
                     final DataItem item = event.getDataItem();
                     if (item.getUri().getPath().compareTo(Constant.PATH_COMMUNICATION) == 0) {;
-                        Log.d(TAG, "Data from Phone in activity 2");
                         DataMap dataMap = DataMapItem.fromDataItem(item).getDataMap();
-                        Log.d(TAG, "Data from Phone in activity3");
                         final int weatherId = dataMap.getInt(Constant.EXTRA_WEATHERID);
-                        Log.d(TAG, "Data from Phone in activity4");
                         final int high = (int)dataMap.getDouble(Constant.EXTRA_HIGH);
-                        stringHighTemp = String.format(getString(R.string.high_temp), String.valueOf(high));
-                        Log.d(TAG, "Data from Phone in activity5");
                         final int low = (int)dataMap.getDouble(Constant.EXTRA_LOW);
-                        stringLowTemp = String.format(getString(R.string.low_temp), String.valueOf(low));
-                        Log.d(TAG, "Data from Phone in activity6");
                         final int imgId = ImageHelper.getSmallArtResourceIdForWeatherCondition(weatherId);
-                        Log.d(TAG, "Data from Phone in activity7");
 
                         Log.d(TAG, "weatherId : "+String.valueOf(weatherId));
                         Log.d(TAG, "high : "+String.valueOf(high));
@@ -302,10 +278,18 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
                         editor.putInt(Constant.EXTRA_LOW, low);
                         editor.commit();
 
-
+                        updateData(weatherId, high, low);
                     }
                 }
             }
+        }
+
+        private void updateData(int weatherId, int high, int low){
+            stringHighTemp = String.format(getString(R.string.high_temp), String.valueOf(high));
+            stringLowTemp = String.format(getString(R.string.low_temp), String.valueOf(low));
+            final int imgId = ImageHelper.getSmallArtResourceIdForWeatherCondition(weatherId);
+            mBackgroundBitmap = getBitmapFromVectorDrawable(DigitalWatchFaceService.this, imgId);
+            invalidate();
         }
 
         /**
@@ -338,9 +322,9 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
             mTextPaintDate.setAlpha(alpha);
 
             mLinePaint = new Paint();
-            mTextPaintDate = createTextPaint(resources.getColor(R.color.digital_text));
-            mTextPaintDate.setAlpha(alpha);
-            mTextPaintDate.setTextSize(1);
+            mLinePaint = createTextPaint(resources.getColor(R.color.digital_text));
+            mLinePaint.setAlpha(alpha);
+            mLinePaint.setTextSize(1);
 
             final int backgroundResId = R.drawable.art_light_clouds;
             mBackgroundBitmap = getBitmapFromVectorDrawable(DigitalWatchFaceService.this, backgroundResId);
@@ -353,16 +337,9 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
             mTextPaintHighTemp = new Paint();
             mTextPaintHighTemp = createTextPaint(resources.getColor(R.color.digital_text));
 
-            mTextPaintHighTempDegree = new Paint();
-            mTextPaintHighTempDegree = createTextPaint(resources.getColor(R.color.digital_text));
-
             mTextPaintLowTemp = new Paint();
             mTextPaintLowTemp = createTextPaint(resources.getColor(R.color.digital_text));
             mTextPaintLowTemp.setAlpha(alpha);
-
-            mTextPaintLowTempDegree = new Paint();
-            mTextPaintLowTempDegree = createTextPaint(resources.getColor(R.color.digital_text));
-            mTextPaintLowTempDegree.setAlpha(alpha);
 
             mCalendar = Calendar.getInstance();
 
@@ -442,9 +419,7 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
             mTextPaint.setTextSize(textSize);
             mTextPaintDate.setTextSize(textSize / mDiffOfTextPaintDateSize);
             mTextPaintHighTemp.setTextSize(textSize / mDiffOfTextPaintHighTempSize);
-            mTextPaintHighTempDegree.setTextSize(textSize / mDiffOfTextPaintHighTempDegreeSize);
             mTextPaintLowTemp.setTextSize(textSize / mDiffOfTextPaintLowTempSize);
-            mTextPaintLowTempDegree.setTextSize(textSize / mDiffOfTextPaintLowTempDegreeSize);
 
         }
 
@@ -469,9 +444,7 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
                     mTextPaint.setAntiAlias(!inAmbientMode);
                     mTextPaintDate.setAntiAlias(!inAmbientMode);
                     mTextPaintHighTemp.setAntiAlias(!inAmbientMode);
-                    mTextPaintHighTempDegree.setAntiAlias(!inAmbientMode);
                     mTextPaintLowTemp.setAntiAlias(!inAmbientMode);
-                    mTextPaintLowTempDegree.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -537,56 +510,56 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
 
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
 
-
             // date
             String textDate = sdf.format(new Date());
-            float mYOffsetDate = mYOffset + mTextPaintDate.getTextSize() + mDiffOfTextPaintDatePos;
+            float mXOffsetDate = mXOffset + (mTextPaint.measureText(text) - mTextPaintDate.measureText(textDate)) / 2;
+            float mYOffsetDate = mYOffset + mTextPaintDate.getTextSize() + mDiffOfTextPaintDatePosY;
+            float dateTextHeigh = mTextPaintDate.getTextSize();
             canvas.drawText(textDate
-                    , mXOffset
+                    , mXOffsetDate
                     , mYOffsetDate
                     , mTextPaintDate);
 
             // devider
+            float width = mTextPaint.measureText(text);
             canvas.drawLine(mXOffset
-                    , mYOffsetDate + mDiffOfTextPaintDatePos
+                    , mYOffsetDate + dateTextHeigh
                     , mXOffset + mTextPaint.measureText(text)
-                    , mYOffsetDate + mDiffOfTextPaintDatePos
+                    , mYOffsetDate + dateTextHeigh
                     , mLinePaint);
 
-            // img
+
             if (mBackgroundBitmap == null)
                 return;
-            float mTopOffsetImg = mYOffsetDate + mDiffOfTextPaintDatePos * mDiffOfTextPaintImgPos;
-            canvas.drawBitmap(mBackgroundBitmap, mXOffset, mTopOffsetImg, mBackgroundPaint);
 
-            // high temp
-            String textHighTemp = stringHighTemp;
-            float mXOffsethighTemp = mXOffset + mBackgroundBitmap.getWidth() + mDiffOfTextPaintHighTempPos;
-            canvas.drawText(textHighTemp
-                    , mXOffsethighTemp
-                    , (mTopOffsetImg + mBackgroundBitmap.getHeight())
-                    , mTextPaintHighTemp);
+            // calculate three position
+            float withdBetween = 10;
+            float imgLength = mBackgroundBitmap.getWidth();
+            float HighLength = mTextPaintHighTemp.measureText(stringHighTemp);
+            float lowLength = mTextPaintLowTemp.measureText(stringLowTemp);
+            float totalLengh = imgLength + HighLength + lowLength + (withdBetween * 2);
 
-            // high temp degree
-//            canvas.drawText(degree
-//                    , mXOffsethighTemp + mTextPaintHighTemp.measureText(textHighTemp)
-//                    , (mTopOffsetImg + mBackgroundBitmap.getHeight()) - mTextPaintHighTemp.measureText(textHighTemp) / mDiffOfTextPaintHighTempDegreePos
-//                    , mTextPaintHighTempDegree);
+            if (width > totalLengh) {
 
-            // low temp
-            String textLowTemp = stringLowTemp;
-            float mXOffsetLowTemp = mXOffset + mBackgroundBitmap.getWidth() + mDiffOfTextPaintHighTempPos
-                    + mTextPaintHighTemp.measureText(textHighTemp) + mTextPaintHighTempDegree.measureText("o") + mDiffOfTextPaintLowTempPos;
-            canvas.drawText(textLowTemp
-                    , mXOffsetLowTemp
-                    , (mTopOffsetImg + mBackgroundBitmap.getHeight())
-                    , mTextPaintLowTemp);
+                // img
+                float mXOffWeatherImg = mXOffset + (width - totalLengh) / 2; // mXOffsetDate;
+                float mYOffWeatherImg = mYOffsetDate + dateTextHeigh * 2;
+                canvas.drawBitmap(mBackgroundBitmap, mXOffWeatherImg, mYOffWeatherImg, mBackgroundPaint);
 
-            // high temp degree
-//            canvas.drawText(degree
-//                    , mXOffsetLowTemp + mTextPaintLowTemp.measureText(textHighTemp)
-//                    , (mTopOffsetImg + mBackgroundBitmap.getHeight()) - mTextPaintHighTemp.measureText(textHighTemp) / mDiffOfTextPaintLowTempDegreePos
-//                    , mTextPaintLowTempDegree);
+                // high temp
+                float mXOffsethighTemp = mXOffWeatherImg + mBackgroundBitmap.getWidth() + withdBetween;
+                canvas.drawText(stringHighTemp
+                        , mXOffsethighTemp
+                        , mYOffWeatherImg + mBackgroundBitmap.getHeight() / 2
+                        , mTextPaintHighTemp);
+
+                // low temp
+                float mXOffsetLowTemp = mXOffWeatherImg + mBackgroundBitmap.getWidth() * 2 + withdBetween * 2;
+                canvas.drawText(stringLowTemp
+                        , mXOffsetLowTemp
+                        , mYOffWeatherImg + mBackgroundBitmap.getHeight() / 2
+                        , mTextPaintLowTemp);
+            }
         }
 
         /**
@@ -622,6 +595,15 @@ public class DigitalWatchFaceService extends CanvasWatchFaceService{
         }
     }
 
+
+
+    /**
+     *
+     * Getting bitmap value from vector image resource
+     * @param context
+     * @param drawableId
+     * @return
+     */
     public static Bitmap getBitmapFromVectorDrawable(Context context, int drawableId) {
         Drawable drawable = AppCompatDrawableManager.get().getDrawable(context, drawableId);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
